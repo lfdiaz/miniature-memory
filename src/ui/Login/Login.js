@@ -1,67 +1,78 @@
-import React, { useState } from "react";
-import { makeStyles } from "@material-ui/styles";
+import React, { useState } from 'react';
+import { makeStyles } from '@material-ui/styles';
 import {
   FormControl,
   Typography,
   LinearProgress,
   Button
-} from "@material-ui/core";
-import { TextInput } from "../Inputs/TextInput";
-import { withRouter } from "react-router";
+} from '@material-ui/core';
+import { TextInput } from '../Inputs/TextInput';
+import { withRouter } from 'react-router';
+import Axios from 'axios';
 
 const styles = makeStyles(theme => ({
   form: {
-    width: "50%",
-    height: "100%",
-    display: "flex",
-    padding: "12px",
-    justifyContent: "center",
-    color: "#c0c5ce"
+    width: '50%',
+    height: '100%',
+    display: 'flex',
+    padding: '12px',
+    justifyContent: 'center',
+    color: '#c0c5ce'
   },
   loginButton: {
-    marginTop: "16px",
-    maxWidth: "150px",
-    color: "#c0c5ce"
+    marginTop: '16px',
+    maxWidth: '150px',
+    color: '#c0c5ce'
   },
   textfield: {
-    color: "#c0c5ce !important"
+    color: '#c0c5ce !important'
   },
   focused: {
-    color: "#c0c5ce"
+    color: '#c0c5ce'
   },
   underline: {
-    "& :after": {
-      color: "#a7adba",
-      borderBottom: "2px solid #a7adba"
+    '& :after': {
+      color: '#a7adba',
+      borderBottom: '2px solid #a7adba'
     }
   },
   textfieldContainer: {
-    marginTop: "12px"
+    marginTop: '12px'
   },
   buttonContainer: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between"
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
   }
 }));
 
 const Login = props => {
   const classes = styles();
 
-  const [userInfo, setUserInfo] = useState({ username: "", password: "" });
+  const [userInfo, setUserInfo] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
 
   const onLoginClick = () => {
     // Send request to login and authenticate user
     setLoading(true);
+    const { username, password } = userInfo;
+    Axios.post('http://localhost:3001/login', { username, password })
+      .then(response => {
+        if (response.status === 200) {
+          props.history.push('/profile');
+        }
+      })
+      .catch(e => {
+        setLoading(false);
+        console.log(e);
+      });
     // Make Request here
     // setTimeout(() => setLoading(false), 5000);
-    props.history.push("/profile");
   };
 
   const onRegisterClick = () => {
-    props.history.push("/register");
+    props.history.push('/register');
     // Send to Register Page
   };
 
@@ -73,25 +84,25 @@ const Login = props => {
   return (
     <React.Fragment>
       {loading && (
-        <LinearProgress color="secondary" variant={"indeterminate"} />
+        <LinearProgress color="secondary" variant={'indeterminate'} />
       )}
       <FormControl className={classes.form}>
         <Typography variant="h6" gutterBottom={true}>
           Welcome
         </Typography>
         <TextInput
-          name={"username"}
+          name={'username'}
           value={username}
           onChange={onChange}
           required={true}
-          label={"Username"}
+          label={'Username'}
         />
         <TextInput
-          name={"password"}
+          name={'password'}
           value={password}
           required={true}
           onChange={onChange}
-          label={"Password"}
+          label={'Password'}
           type="password"
         />
 

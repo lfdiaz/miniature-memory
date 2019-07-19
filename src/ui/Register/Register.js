@@ -1,69 +1,81 @@
-import React, { useState } from "react";
-import { makeStyles } from "@material-ui/styles";
+import React, { useState } from 'react';
+import { makeStyles } from '@material-ui/styles';
 import {
   LinearProgress,
   FormControl,
   Typography,
   Button
-} from "@material-ui/core";
-import { TextInput } from "../Inputs/TextInput";
-import { withRouter } from "react-router";
+} from '@material-ui/core';
+import { TextInput } from '../Inputs/TextInput';
+import { withRouter } from 'react-router';
+import Axios from 'axios';
 
 const styles = makeStyles(theme => ({
   form: {
-    width: "50%",
-    height: "100%",
-    display: "flex",
-    padding: "12px",
-    justifyContent: "center",
-    color: "#c0c5ce"
+    width: '50%',
+    height: '100%',
+    display: 'flex',
+    padding: '12px',
+    justifyContent: 'center',
+    color: '#c0c5ce'
   },
   loginButton: {
-    marginTop: "16px",
-    maxWidth: "150px",
-    color: "#c0c5ce"
+    marginTop: '16px',
+    maxWidth: '150px',
+    color: '#c0c5ce'
   },
   textfield: {
-    color: "#c0c5ce !important"
+    color: '#c0c5ce !important'
   },
   focused: {
-    color: "#c0c5ce"
+    color: '#c0c5ce'
   },
   underline: {
-    "& :after": {
-      color: "#a7adba",
-      borderBottom: "2px solid #a7adba"
+    '& :after': {
+      color: '#a7adba',
+      borderBottom: '2px solid #a7adba'
     }
   },
   textfieldContainer: {
-    marginTop: "12px"
+    marginTop: '12px'
   },
   buttonContainer: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between"
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
   },
   inputRoot: {
-    color: "#a7adba"
+    color: '#a7adba'
   }
 }));
 
 const Register = props => {
   const classes = styles();
 
-  const [userInfo, setUserInfo] = useState({ username: "", password: "" });
+  const [userInfo, setUserInfo] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
 
   const onRegisterClick = () => {
     // Send request to login and authenticate user
     setLoading(true);
+    const { username, password } = userInfo;
+    Axios.post('http://localhost:3001/signup', { username, password })
+      .then(response => {
+        if (response.status === 200) {
+          props.history.push('/');
+        }
+      })
+      .catch(e => {
+        setLoading(false);
+        console.log(e);
+      });
     // Make Request here
     setTimeout(() => setLoading(false), 5000);
   };
 
   const onLoginClick = () => {
-    props.history.push("/");
+    props.history.push('/');
     // Send to Register Page
   };
 
@@ -75,24 +87,24 @@ const Register = props => {
   return (
     <React.Fragment>
       {loading && (
-        <LinearProgress color="secondary" variant={"indeterminate"} />
+        <LinearProgress color="secondary" variant={'indeterminate'} />
       )}
       <FormControl className={classes.form}>
         <Typography variant="h6" gutterBottom={true}>
           Welcome, please register to access
         </Typography>
         <TextInput
-          name={"username"}
+          name={'username'}
           value={username}
           onChange={onChange}
-          label={"Username"}
+          label={'Username'}
           required={true}
         />
         <TextInput
-          name={"password"}
+          name={'password'}
           value={password}
           onChange={onChange}
-          label={"Password"}
+          label={'Password'}
           type="password"
           required={true}
         />
