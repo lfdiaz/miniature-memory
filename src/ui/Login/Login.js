@@ -60,6 +60,7 @@ const Login = props => {
     Axios.post('http://localhost:3001/login', { username, password })
       .then(response => {
         if (response.status === 200) {
+          localStorage.setItem('username', username);
           props.history.push('/profile');
         }
       })

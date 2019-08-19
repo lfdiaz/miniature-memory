@@ -1,111 +1,198 @@
 const express = require("express");
 const path = require("path");
 const app = express();
-var bodyParser = require('body-parser')
+const config = require('./config/database.js')
+const mongoose = require('mongoose')
+const User = require('./models/User')
+const Profile = require('./models/Profile')
+const FuelQuote = require('./models/FuelQuote')
+
+mongoose.connect(config.databaseURL, {useNewUrlParser: true})
+
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error: '))
+db.once('open', () => {
+  console.log('Successfully connected to mongoDB')
+})
+
 
 // app.use(express.static(path.join(__dirname, "build")));
 
-app.use(bodyParser.json());
-
 app.set("port", process.env.PORT || 3001);
 
-let usersInfo = [
-  {
-    username: "luis",
-    password: "luis"
-  },
-  {
-    username: "adam",
-    password: "adam"
-  }
-];
-
-app.post("/login", (req, res) => {
+app.post("/login", express.json(), async (req, res) => {
   
   const { username, password } = req.body;
   
-  const userData = usersInfo.filter(person => person.username === username);
+  if(!username || !password){
+    res.status(400)
+    res.send('Username and password are required')
+    return 
+  }
   
-  if (userData.length > 0) {
-    if (userData[0].password === password) {
-      res.status(200);
-      res.send("success");
-    } else {
-      res.status(404);
-      res.send("Incorrect password");
+  await User.findOne({username}, (error, user) => {
+    
+    if(error || !user){
+      res.status(400);
+      res.send("User nor found")
     }
-  } else {
-    res.status(404);
-    res.send("User not found");
-  }
+    if(user && user.password === password){
+      res.status(200);
+      res.json({id: user._id, username: user.username})
+    }
+  })
+
 });
 
-app.post("/signup", (req, res) => {
+app.post("/signup", express.json(), async (req, res) => {
+  
   const { username, password } = req.body;
-  usersInfo.push({ username, password });
-  res.status(200);
-  res.send("User added successfully");
-});
-
-let profileData = [
-  {
-    username: "luis",
-    name: "Luis Diaz",
-    address1: "Some Address in Houston",
-    address2: "",
-    city: "Houston",
-    state: "TX",
-    zipcode: "77204"
+ 
+  if(!username || !password){
+    res.status(400)
+    res.send('Username and password are required')
+    return
   }
-];
 
-app.post("/profile", (req, res) => {
-  const { username, name, address1, address2, city, state, zipcode } = req.body;
-  profileData.push({
-    username,
-    name,
-    address1,
-    address2,
-    city,
-    state,
-    zipcode
-  });
-  res.status(200);
-  res.send("Profile Added");
-});
-
-app.get("/profile", (req, res) => {
-  const { username } = req.params;
-  const userData = profileData.filter(
-    person => person.username === username
-  )[0];
-  if (userData) {
+  const newUser = await new User({username, password}).save()
+ 
+  if(newUser){
     res.status(200);
-    res.send(userData);
-  } else {
-    res.status(400);
-    res.send("Data not found for user");
+    res.json({userId: newUser._id, username: newUser.username})
   }
 });
 
-const userHistory = [{
-  deliveryDate: new Date(),
-  gallons: 10,
-  address: 'New Address in Houston',
-  suggestedPrice: 100,
-  amount: 10 * 100
-},
-{
-  deliveryDate: new Date(),
-  gallons: 5,
-  address: 'Separate Address in Texas',
-  suggestedPrice: 10,
-  amount: 10 * 5
-},
-]
+app.post("/profile", express.json(), async(req, res) => {
+  const { username, name, address1, address2, city, state, zipcode } = req.body;
 
-app.get('/quote', (req, res) => {
-  res.send(userHistory)
+  try {
+    const user = await User.findOne({username}).exec()
+    if(!user){
+      throw new Error("The username specified was not found")
+    }
+    const userId = user && user._id
+    const newProfile = userId && await new Profile({name, address1, address2, city, state, zipcode, userId}).save()
+    res.status(200)
+    res.json(newProfile)
+  }catch(e){
+    if(!name || !address1 || !city || !zipcode ){
+      res.status(400)
+      res.send('Please fill all the required fields')
+    }else{
+      res.status(400)
+      res.send(e)
+    }
+  }
+});
+
+app.get("/profile", express.json(), async (req, res) => {
+  try {
+    const { username } = req.query;
+   
+    const user = await User.findOne({username}).exec()
+    
+    const userId = user && user._id
+    
+    const userProfile = userId && await Profile.findOne({userId}).exec()
+    if(!userProfile){
+      throw new Error('User not found')
+    }
+    res.status(200);
+    res.json(userProfile)
+  }catch(e){
+    res.status(500)
+    res.send('User not found')
+  }
+ 
+});
+
+app.post('/quote', express.json(), async (req, res) => {
+  const {deliveryDate, gallons, address, suggestedPrice, username} = req.body;
+
+  try{
+    if(!deliveryDate || !gallons){
+      throw new Error('Please fill the delivery date and gallons fields')
+    }
+
+    const user = await User.findOne({username}).exec()
+    
+    const userId = user && user._id
+
+    const fuelQuote = userId && await FuelQuote.findOneAndUpdate({userId}, {userId, deliveryDate, gallons, address, suggestedPrice}, {upsert: true}).save()
+    res.status(200)
+    res.json(fuelQuote)
+
+
+  }catch(e){
+    res.status(400)
+    res.send(e)
+  }
+})
+
+app.get('/quote', express.json(), async (req, res) => {
+  const {username}= req.query
+ 
+  try{
+
+    const user = await User.findOne({username}).exec()
+    const userId = user && user._id
+    const profile = userId && await Profile.findOne({userId}).exec();
+  
+    const fuelQuote = await FuelQuote.find({userId}).exec()
+    
+    res.status(200)
+    res.json({...fuelQuote, name: profile.name})
+  }catch(e){
+    res.status(400)
+    res.send(e)
+  }
+})
+
+app.post("/pricing",express.json(), async (req, res) => { 
+  const { gallons, username } = req.body;
+  const currentPricePerGallon = 1.50;
+  
+  try{
+    const user = await User.findOne({username}).exec()
+    
+    const userId = user && user._id
+    
+    const profile = userId && await Profile.findOne({userId}).exec();
+    const fuelQuoteUser = userId && await FuelQuote.find({userId}).exec();
+    
+    if(!profile){
+      throw new Error("User not found")
+    }
+
+    let locationFactor = 0.04;
+
+    if(profile.state && (profile.state.toLowerCase().includes('texas') || profile.state.toLowerCase().includes('tx'))){
+      locationFactor = 0.02
+    }
+
+    let rateHistoryFactor = 0
+    if(fuelQuoteUser){
+      rateHistoryFactor = 0.01
+    }
+
+    const gallonsRequestedFactor = gallons > 1000 ? 0.02 : 0.03;
+
+    const companyProfitFactor = 0.1;
+
+    const rateFluctuation = 0.04
+   
+    const margin = currentPricePerGallon * (locationFactor - rateHistoryFactor + gallonsRequestedFactor + companyProfitFactor + rateFluctuation)
+    
+    const suggestedPrice = currentPricePerGallon + margin
+   
+    res.status(200)
+    res.json(suggestedPrice)
+
+  }catch(e){
+    res.status(400)
+    res.send(e)
+  }
+
 })
 
 app.get("/*", function(req, res) {

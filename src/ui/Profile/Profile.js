@@ -49,20 +49,33 @@ const styles = createStyles(theme => ({
 }));
 
 class Profile extends React.PureComponent {
+  static getDerivedStateFromProps = (props, state) => {
+    const { name, address1, address2, city, state: stateInfo, zipcode } = props;
+    if (!state.editing) {
+      return {
+        inputs: { name, address1, address2, city, state: stateInfo, zipcode }
+      };
+    }
+  };
   state = {
     inputs: {
-      name: '',
-      address1: '',
-      address2: '',
-      city: '',
-      state: '',
-      zipcode: ''
-    }
+      name: this.props.name,
+      address1: this.props.address1,
+      address2: this.props.address2,
+      city: this.props.city,
+      state: this.props.state,
+      zipcode: this.props.zipode
+    },
+    success: false,
+    error: false,
+    editing: false
   };
 
   setValues = data => {
     this.setState({
-      inputs: { ...data }
+      inputs: { ...data },
+      error: false,
+      editing: true
     });
   };
 
@@ -73,9 +86,20 @@ class Profile extends React.PureComponent {
 
   sendData = () => {
     const { inputs } = this.state;
-    Axios.post('http://localhost:3001/profile', { ...inputs })
+    const { name, address1, city, zipcode } = inputs;
+    if (!name || !address1 || !city || !zipcode) {
+      this.setState({
+        error: true
+      });
+      return;
+    }
+    const username = localStorage.getItem('username');
+    Axios.post('http://localhost:3001/profile', { ...inputs, username })
       .then(response => {
-        if (response.statusText === 200) {
+        if (response.status === 200) {
+          this.setState({
+            success: true
+          });
         }
       })
       .catch(e => {
@@ -93,12 +117,18 @@ class Profile extends React.PureComponent {
       zipcode
     } = this.state.inputs;
     const { states, classes } = this.props;
+    const { success, error } = this.state;
 
     return (
       <React.Fragment>
         <Typography variant="h6" className={classes.title} gutterBottom={true}>
           Profile Management
         </Typography>
+        {success && (
+          <Typography variant="subtitle1" className={classes.text}>
+            The Information has been saved
+          </Typography>
+        )}
         <FormControl className={classes.formControl}>
           <TextInput
             name="name"
@@ -107,6 +137,7 @@ class Profile extends React.PureComponent {
             required={true}
             onChange={this.onChange}
             maxlength={50}
+            error={error}
           />
           <TextInput
             name="address1"
@@ -115,6 +146,7 @@ class Profile extends React.PureComponent {
             required={true}
             onChange={this.onChange}
             maxlength={100}
+            error={error}
           />
           <TextInput
             name="address2"
@@ -130,6 +162,7 @@ class Profile extends React.PureComponent {
             required={true}
             onChange={this.onChange}
             maxlength={100}
+            error={error}
           />
           <FormControl className={classes.selectInput}>
             <InputLabel htmlFor="state" className={classes.text}>
@@ -159,6 +192,7 @@ class Profile extends React.PureComponent {
             required={true}
             onChange={this.onChange}
             maxlength={9}
+            error={error}
           />
         </FormControl>
         <div className={classes.wrapperButton}>
